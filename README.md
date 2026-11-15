@@ -1,46 +1,58 @@
 # PatchGap
 
-PatchGap inventories package updates available on a Linux system. It runs offline by default and can optionally check installed versions of outdated packages against the OSV vulnerability database.
+PatchGap inventories Linux package updates and can check package versions against OSV. It runs offline by default and uses Python 3.9 or newer with no third-party dependencies.
 
-## Requirements
+Supported package managers: APT, DNF, YUM, Pacman, Zypper, and APK.
 
-- Linux
-- Python 3.9 or newer (standard library only)
-- One supported package manager: APT, DNF, YUM, Pacman, Zypper, or APK
-
-The shell entry point `linux-outdated-enum.sh` forwards to the Python implementation. You can also run the Python file directly.
-
-## Usage
+## Run
 
 ```sh
-chmod +x linux-outdated-enum.sh
-./linux-outdated-enum.sh
+chmod +x patchgap
+./patchgap
 ```
 
-Examples:
+The Python implementation can also be run directly with `python3 patchgap.py`.
+
+## Offline inventory, online CVE scan
+
+On the offline Linux machine, export its installed package names and versions:
 
 ```sh
-# Check cached package metadata without network access
-./linux-outdated-enum.sh
+./patchgap --export-inventory patchgap-inventory.json
+```
 
-# Refresh package metadata, then inventory updates (may require root)
-sudo ./linux-outdated-enum.sh --refresh
+Transfer `patchgap-inventory.json` to an internet-connected machine, then query OSV:
 
-# Also check outdated installed versions against OSV (requires internet)
-./linux-outdated-enum.sh --online
+```sh
+./patchgap --scan-inventory patchgap-inventory.json --online
+```
+
+This scans all recorded package versions, even if they are not installed on the connected machine. The inventory records the source machine's OS and OSV ecosystem so the query uses that system's package context.
+
+## Other options
+
+```sh
+# Check locally available updates using cached metadata; no network access
+./patchgap
+
+# Check updates for outdated local packages against OSV
+./patchgap --online
+
+# Refresh package metadata first (may require root)
+sudo ./patchgap --refresh
 
 # Save a plain-text report only when requested
-./linux-outdated-enum.sh --online --output patchgap-report.txt
+./patchgap --online --output patchgap-report.txt
 ```
 
-`--refresh` runs the package manager's metadata refresh command. It does not install, upgrade, or remove packages. For Arch Linux it uses `checkupdates` when available, avoiding `pacman -Sy`. Without `--refresh`, update availability depends on metadata already cached on the machine.
+`--refresh` updates package metadata only; it does not install, upgrade, or remove packages. On Arch Linux it uses `checkupdates` when available, avoiding `pacman -Sy`. Without `--refresh`, update availability depends on cached metadata.
 
-By default, the report is printed to the terminal and no report file is created. `--output FILE` writes the same clean, plain-text report to the selected path.
+By default, reports are printed to the terminal and not saved. `--output FILE` saves the plain-text report. `--export-inventory FILE` writes a portable JSON inventory; it contains the host name, OS details, package names, and installed versions.
 
-## CVE lookup details
+Terminal colors are enabled automatically for interactive output and disabled when output is redirected or the `NO_COLOR` environment variable is set. Use `--no-color` to disable them or `--color` to force them. Saved report files remain plain text.
 
-Online mode submits package names and installed versions for packages reported as outdated to the [OSV API](https://osv.dev/). It currently maps Debian, Ubuntu, Alpine, AlmaLinux, Rocky Linux, Red Hat Enterprise Linux, openSUSE, SUSE Linux Enterprise, and Wolfi. Other distributions are still inventoried, but their CVE status is shown as unknown until an ecosystem mapping is available.
+## CVE lookup
 
-The lookup checks only outdated packages found by the package manager. A result of "none found" means OSV returned no matching advisory for that package and version; it does not guarantee that the software has no known or unknown vulnerabilities. Online mode sends package names and installed versions to OSV. Offline mode makes no network requests and reports no CVE verdict.
+Online lookups send package names, installed versions, and the recorded OSV ecosystem to the [OSV API](https://osv.dev/). Current ecosystem mappings include Debian, Ubuntu, Alpine, AlmaLinux, Rocky Linux, Red Hat Enterprise Linux, openSUSE, SUSE Linux Enterprise, and Wolfi. Unsupported distributions are reported with unknown CVE status.
 
-PatchGap reports package-manager updates. It does not determine whether manually installed binaries or source checkouts are current.
+The local `--online` scan checks outdated packages reported by the package manager. `--scan-inventory FILE --online` checks all packages in that saved inventory. "No matching advisories" means OSV returned no matching record; it is not a guarantee that software is vulnerability-free. Online inventory scans can make multiple requests for large package lists.
