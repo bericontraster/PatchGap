@@ -1,16 +1,8 @@
 <p align="center">
-  <img src="assets\Penguin Package Shield Logo.png" alt="PatchGap logo: a shield with a patch closing a gap" width="144">
+  <img src="assets\patchgap.png" alt="PatchGap logo: a shield with a patch closing a gap" width="200" height="200">
 </p>
 
-<h1 align="center">PatchGap</h1>
-
-<p align="center">
-  Linux package update inventory and offline-to-online vulnerability checks
-</p>
-
-<p align="center">
-  Offline-first &nbsp;|&nbsp; Python 3 &nbsp;|&nbsp; No third-party dependencies
-</p>
+# PatchGap
 
 PatchGap helps administrators identify package updates on Linux systems and check installed package versions for known vulnerability advisories. It also supports disconnected systems: export a package inventory where there is no internet, transfer the file, and query that saved inventory from a connected machine.
 
