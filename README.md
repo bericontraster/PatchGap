@@ -17,7 +17,6 @@ PatchGap helps administrators identify package updates on Linux systems and chec
 - [Understanding results](#understanding-results)
 - [Privacy and safety](#privacy-and-safety)
 - [Scope and limitations](#scope-and-limitations)
-- [Project files](#project-files)
 - [License](#license)
 
 ## Overview
@@ -126,13 +125,6 @@ Terminal colors are enabled automatically for interactive output and disabled fo
 ## Scope and limitations
 
 PatchGap reports package-manager inventory and update status. It does not inspect arbitrary executable files, source checkouts, containers, or software installed outside a supported package manager. Online checks depend on OSV's coverage and the accuracy of the package name, version, and ecosystem mapping. Repository metadata may be stale unless refreshed.
-
-## Project files
-
-- `patchgap` — small POSIX shell launcher
-- `patchgap.py` — Python implementation
-- `assets/patchgap-logo.svg` — project logo used above
-- `assets/patchgap.gif` — animated usage demonstration
 
 ## License
 
