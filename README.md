@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/patchgap-logo.svg" alt="PatchGap logo: a shield with a patch closing a gap" width="144">
+  <img src="assets\Penguin Package Shield Logo.png" alt="PatchGap logo: a shield with a patch closing a gap" width="144">
 </p>
 
 <h1 align="center">PatchGap</h1>
