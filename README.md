@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="assets\patchgap.png" alt="PatchGap logo: a shield with a patch closing a gap" width="200" height="200">
-</p>
-
 # PatchGap
 
 PatchGap helps administrators identify package updates on Linux systems and check installed package versions for known vulnerability advisories. It also supports disconnected systems: export a package inventory where there is no internet, transfer the file, and query that saved inventory from a connected machine.
