@@ -1,63 +1,135 @@
-# PatchGap
+<p align="center">
+  <img src="assets/patchgap-logo.svg" alt="PatchGap logo: a shield with a patch closing a gap" width="144">
+</p>
 
-PatchGap inventories Linux package updates and can check package versions against OSV. It runs offline by default and uses Python 3.9 or newer with no third-party dependencies.
+<h1 align="center">PatchGap</h1>
 
-Supported package managers: APT, DNF, YUM, Pacman, Zypper, and APK.
+<p align="center">
+  Linux package update inventory and offline-to-online vulnerability checks
+</p>
 
-## Run
+<p align="center">
+  Offline-first &nbsp;|&nbsp; Python 3 &nbsp;|&nbsp; No third-party dependencies
+</p>
+
+PatchGap helps administrators identify package updates on Linux systems and check installed package versions for known vulnerability advisories. It also supports disconnected systems: export a package inventory where there is no internet, transfer the file, and query that saved inventory from a connected machine.
+
+## Table of contents
+
+- [Overview](#overview)
+- [What PatchGap checks](#what-patchgap-checks)
+- [Quick start](#quick-start)
+- [Offline inventory and online CVE scan](#offline-inventory-and-online-cve-scan)
+- [Commands](#commands)
+- [Understanding results](#understanding-results)
+- [Privacy and safety](#privacy-and-safety)
+- [Scope and limitations](#scope-and-limitations)
+- [Project files](#project-files)
+- [License](#license)
+
+## Overview
+
+PatchGap is designed for a common Linux administration problem: the system that needs reviewing may not be allowed to access the internet. The tool separates local package discovery from online vulnerability lookups:
+
+1. Read installed package versions and available updates from the system's package manager.
+2. Optionally save the installed package inventory as a portable JSON file.
+3. On an internet-connected machine, submit the saved package names and versions to OSV and review matching advisories.
+
+PatchGap is an inventory and reporting tool. It does not install, upgrade, or remove software.
+
+## What PatchGap checks
+
+| Check | Data source | Network required |
+| --- | --- | --- |
+| Available package updates | Local package-manager metadata | No, unless refreshing metadata |
+| Installed package inventory | Local package database | No |
+| Known advisories for outdated packages | OSV API | Yes |
+| Known advisories for a transferred inventory | OSV API, using the source OS ecosystem saved in the inventory | Yes |
+
+Supported package managers are APT, DNF, YUM, Pacman, Zypper, and APK. OSV ecosystem mappings currently include Debian, Ubuntu, Alpine, AlmaLinux, Rocky Linux, Red Hat Enterprise Linux, openSUSE, SUSE Linux Enterprise, and Wolfi.
+
+## Quick start
+
+Requirements: Linux and Python 3.9 or newer. PatchGap uses only the Python standard library.
 
 ```sh
 chmod +x patchgap
 ./patchgap
 ```
 
-The Python implementation can also be run directly with `python3 patchgap.py`.
+To run the implementation directly without the shell launcher:
 
-## Offline inventory, online CVE scan
+```sh
+python3 patchgap.py
+```
 
-On the offline Linux machine, export its installed package names and versions:
+The launcher locates `patchgap.py` next to itself, so the two files should stay together.
+
+## Offline inventory and online CVE scan
+
+On the system to review, export its installed package names and versions. This works offline and does not refresh repositories:
 
 ```sh
 ./patchgap --export-inventory patchgap-inventory.json
 ```
 
-Transfer `patchgap-inventory.json` to an internet-connected machine, then query OSV:
+Transfer `patchgap-inventory.json` to an internet-connected Linux machine with PatchGap, then check every recorded package version:
 
 ```sh
 ./patchgap --scan-inventory patchgap-inventory.json --online
+```
 
-# Browse full advisory lists for selected packages
+The scan uses the source system's OS ecosystem recorded in the inventory; the connected machine's installed packages do not affect the scan.
+
+Long advisory lists are shortened in the findings table to keep each row on one line. To browse the complete list for a package, add `--inspect`:
+
+```sh
 ./patchgap --scan-inventory patchgap-inventory.json --online --inspect
 ```
 
-This scans all recorded package versions, even if they are not installed on the connected machine. The inventory records the source machine's OS and OSV ecosystem so the query uses that system's package context.
+Enter a package name or part of a name at the prompt. PatchGap shows matching packages, then displays advisory IDs in pages of 25.
 
-The findings table uses fixed-width package and version columns. Long advisory lists are shortened to one line with a count of the remaining IDs. Use `--inspect` to search for a package and browse its complete list in pages.
+## Commands
 
-## Other options
+| Command | Purpose |
+| --- | --- |
+| `./patchgap` | Show locally available package updates using cached metadata; no network access |
+| `./patchgap --online` | Check outdated local packages against OSV |
+| `./patchgap --refresh` | Refresh package metadata, then show available updates; may require root |
+| `./patchgap --export-inventory FILE` | Save installed package names, versions, and source OS details to JSON |
+| `./patchgap --scan-inventory FILE --online` | Check all package versions in a saved inventory against OSV |
+| `./patchgap --scan-inventory FILE --online --inspect` | Interactively browse full advisory lists after the scan |
+| `./patchgap --online --output report.txt` | Print a report and save a plain-text copy |
+| `./patchgap --help` | Show all options |
 
-```sh
-# Check locally available updates using cached metadata; no network access
-./patchgap
+`--refresh` updates repository metadata only. On Arch Linux, PatchGap uses `checkupdates` when available instead of `pacman -Sy`. Without `--refresh`, update results depend on the metadata already cached on the machine.
 
-# Check updates for outdated local packages against OSV
-./patchgap --online
+## Understanding results
 
-# Refresh package metadata first (may require root)
-sudo ./patchgap --refresh
+- **Update available** means the configured package manager reports a newer package version in its current metadata.
+- **Advisory IDs** can include CVE identifiers and distro-specific security notice IDs.
+- **No matching advisories** means OSV returned no matching record for that package and version. It does not prove the software is vulnerability-free.
+- **Unknown** means PatchGap could not check the package, the lookup failed, or the saved system's ecosystem is unsupported. Unknown is not the same as a clean result.
 
-# Save a plain-text report only when requested
-./patchgap --online --output patchgap-report.txt
-```
+Terminal colors are enabled automatically for interactive output and disabled for redirected output or when `NO_COLOR` is set. Use `--no-color` to disable colors or `--color` to force them. Reports saved with `--output` are plain text.
 
-`--refresh` updates package metadata only; it does not install, upgrade, or remove packages. On Arch Linux it uses `checkupdates` when available, avoiding `pacman -Sy`. Without `--refresh`, update availability depends on cached metadata.
+## Privacy and safety
 
-By default, reports are printed to the terminal and not saved. `--output FILE` saves the plain-text report. `--export-inventory FILE` writes a portable JSON inventory; it contains the host name, OS details, package names, and installed versions.
+- Normal inventory and update checks do not contact an external service.
+- `--online` sends package names, installed versions, and the OSV ecosystem to the OSV API.
+- The exported inventory includes the source host name, OS details, package names, and installed versions. Review it before transferring or sharing it.
+- PatchGap does not install, upgrade, or remove packages. `--refresh` does update local package-manager metadata.
 
-Terminal colors are enabled automatically for interactive output and disabled when output is redirected or the `NO_COLOR` environment variable is set. Use `--no-color` to disable them or `--color` to force them. Saved report files remain plain text.
+## Scope and limitations
 
-## CVE lookup
+PatchGap reports package-manager inventory and update status. It does not inspect arbitrary executable files, source checkouts, containers, or software installed outside a supported package manager. Online checks depend on OSV's coverage and the accuracy of the package name, version, and ecosystem mapping. Repository metadata may be stale unless refreshed.
 
-Online lookups send package names, installed versions, and the recorded OSV ecosystem to the [OSV API](https://osv.dev/). Current ecosystem mappings include Debian, Ubuntu, Alpine, AlmaLinux, Rocky Linux, Red Hat Enterprise Linux, openSUSE, SUSE Linux Enterprise, and Wolfi. Unsupported distributions are reported with unknown CVE status.
+## Project files
 
-The local `--online` scan checks outdated packages reported by the package manager. `--scan-inventory FILE --online` checks all packages in that saved inventory. "No matching advisories" means OSV returned no matching record; it is not a guarantee that software is vulnerability-free. Online inventory scans can make multiple requests for large package lists.
+- `patchgap` — small POSIX shell launcher
+- `patchgap.py` — Python implementation
+- `assets/patchgap-logo.svg` — project logo used above
+
+## License
+
+PatchGap is released under the [MIT License](LICENSE).
