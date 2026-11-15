@@ -25,9 +25,14 @@ Transfer `patchgap-inventory.json` to an internet-connected machine, then query 
 
 ```sh
 ./patchgap --scan-inventory patchgap-inventory.json --online
+
+# Browse full advisory lists for selected packages
+./patchgap --scan-inventory patchgap-inventory.json --online --inspect
 ```
 
 This scans all recorded package versions, even if they are not installed on the connected machine. The inventory records the source machine's OS and OSV ecosystem so the query uses that system's package context.
+
+The findings table uses fixed-width package and version columns. Long advisory lists are shortened to one line with a count of the remaining IDs. Use `--inspect` to search for a package and browse its complete list in pages.
 
 ## Other options
 

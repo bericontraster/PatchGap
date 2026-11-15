@@ -399,6 +399,35 @@ def build_report(args: argparse.Namespace) -> tuple[str, int]:
     return "\n".join(lines) + "\n", findings
 
 
+def fit_cell(value: str, width: int) -> str:
+    if len(value) <= width:
+        return value.ljust(width)
+    return value[:max(0, width - 1)] + "…"
+
+
+def compact_advisories(advisories: list[str], width: int) -> str:
+    full = ", ".join(advisories)
+    if len(full) <= width:
+        return full.ljust(width)
+    shown: list[str] = []
+    for advisory in advisories:
+        candidate = shown + [advisory]
+        remaining = len(advisories) - len(candidate)
+        suffix = f" … (+{remaining} more)" if remaining else ""
+        if len(", ".join(candidate)) + len(suffix) > width:
+            break
+        shown = candidate
+    remaining = len(advisories) - len(shown)
+    suffix = f" … (+{remaining} more)"
+    while shown and len(", ".join(shown)) + len(suffix) > width:
+        shown.pop()
+        remaining = len(advisories) - len(shown)
+        suffix = f" … (+{remaining} more)"
+    if not shown:
+        return fit_cell(advisories[0], width)
+    return (", ".join(shown) + suffix).ljust(width)
+
+
 def inventory_report(data: dict[str, object], packages: list[Update], lookup_message: str) -> tuple[str, int]:
     os_data = data["os"]
     assert isinstance(os_data, dict)
@@ -423,13 +452,17 @@ def inventory_report(data: dict[str, object], packages: list[Update], lookup_mes
     ]
     affected = [package for package in packages if package.advisories]
     if affected:
-        name_w = min(32, max(7, max(len(p.name) for p in affected)))
-        version_w = min(28, max(7, max(len(p.installed) for p in affected)))
-        lines.append(f"{'PACKAGE':<{name_w}}  {'VERSION':<{version_w}}  ADVISORIES")
-        lines.append(f"{'-' * name_w}  {'-' * version_w}  {'-' * 30}")
+        terminal_width = shutil.get_terminal_size((100, 24)).columns
+        table_width = max(60, min(terminal_width, 160))
+        name_w = min(26, max(10, int(table_width * 0.22)))
+        version_w = min(24, max(10, int(table_width * 0.20)))
+        advisory_w = table_width - name_w - version_w - 4
+        lines.append(f"{fit_cell('PACKAGE', name_w)}  {fit_cell('VERSION', version_w)}  ADVISORIES")
+        lines.append(f"{'-' * name_w}  {'-' * version_w}  {'-' * advisory_w}")
         for package in sorted(affected, key=lambda p: p.name.lower()):
-            lines.append(f"{package.name[:name_w]:<{name_w}}  {package.installed[:version_w]:<{version_w}}  "
-                         f"{', '.join(package.advisories)}")
+            lines.append(f"{fit_cell(package.name, name_w)}  {fit_cell(package.installed, version_w)}  "
+                         f"{compact_advisories(package.advisories, advisory_w)}")
+        lines += ["", "Long advisory lists are shortened in this table. Use --inspect to read the full list for a package."]
     elif unknown == 0:
         lines.append("No matching OSV advisories were returned for the recorded package versions.")
     lines += ["", f"Advisory identifiers: {findings}", f"Packages with unknown CVE status: {unknown}"]
@@ -490,17 +523,24 @@ def colorize_report(report: str) -> str:
             label, value = content.split(":", 1)
             content = f"{cyan}{label}:{reset}{value}"
         elif re.match(r"^\S+\s{2,}\S+", content):
-            columns = re.split(r"\s{2,}", content.strip())
+            columns = re.split(r"(\s{2,})", content.rstrip())
+            cells = columns[::2]
             if len(columns) >= 3:
-                package, version = columns[0], columns[1]
-                if len(columns) >= 4:
-                    available, status = columns[2], "  ".join(columns[3:])
-                    content = (f"{bold}{white}{package}{reset}  {yellow}{version}{reset}  "
-                               f"{green}{available}{reset}  {color_status(status, bold, red, yellow, green, dim, reset)}")
-                else:
-                    status = columns[2]
-                    content = (f"{bold}{white}{package}{reset}  {yellow}{version}{reset}  "
-                               f"{color_status(status, bold, red, yellow, green, dim, reset)}")
+                if len(cells) >= 3:
+                    cells[0] = f"{bold}{white}{cells[0]}{reset}"
+                    cells[1] = f"{yellow}{cells[1]}{reset}"
+                    if len(cells) >= 4:
+                        cells[2] = f"{green}{cells[2]}{reset}"
+                        for index in range(3, len(cells)):
+                            cells[index] = color_status(cells[index], bold, red, yellow, green, dim, reset)
+                    else:
+                        cells[2] = color_status(cells[2], bold, red, yellow, green, dim, reset)
+                    rebuilt = []
+                    for index, cell in enumerate(cells):
+                        rebuilt.append(cell)
+                        if 2 * index + 1 < len(columns):
+                            rebuilt.append(columns[2 * index + 1])
+                    content = "".join(rebuilt)
         rendered.append(content + ending)
     return "".join(rendered)
 
@@ -518,6 +558,57 @@ def color_status(status: str, bold: str, red: str, yellow: str,
     else:
         color = green
     return f"{color}{status}{reset}"
+
+
+def inspect_findings(packages: list[Update], use_color: bool) -> None:
+    affected = sorted((p for p in packages if p.advisories), key=lambda p: p.name.lower())
+    if not affected:
+        print("There are no advisory lists to inspect.")
+        return
+    print("\nAdvisory inspector: enter a package name or part of a name; enter q to quit.")
+    while True:
+        try:
+            query = input("Package> ").strip()
+        except EOFError:
+            return
+        if query.lower() in {"q", "quit", "exit"}:
+            return
+        if not query:
+            continue
+        matches = [p for p in affected if query.casefold() in p.name.casefold()]
+        if not matches:
+            print("No matching package. Try a shorter name or enter q to quit.")
+            continue
+        if len(matches) == 1:
+            selected = matches[0]
+        else:
+            for index, package in enumerate(matches[:40], 1):
+                print(f"{index:>2}. {package.name} {package.installed} ({len(package.advisories)} advisories)")
+            if len(matches) > 40:
+                print(f"Showing 40 of {len(matches)} matches; refine the package search.")
+                continue
+            try:
+                choice = input("Select number (or enter another search)> ").strip()
+            except EOFError:
+                return
+            if not choice.isdigit() or not 1 <= int(choice) <= len(matches):
+                print("No package selected.")
+                continue
+            selected = matches[int(choice) - 1]
+        heading = f"\n{selected.name} {selected.installed} — {len(selected.advisories)} advisories"
+        print(f"\033[1;36m{heading}\033[0m" if use_color else heading)
+        page_size = 25
+        for start in range(0, len(selected.advisories), page_size):
+            page = selected.advisories[start:start + page_size]
+            for index, advisory in enumerate(page, start + 1):
+                item = f"  {index:>3}. {advisory}"
+                print(f"\033[1;31m{item}\033[0m" if use_color else item)
+            if start + page_size < len(selected.advisories):
+                try:
+                    if input("-- more -- press Enter to continue, q to stop -- ").strip().lower() == "q":
+                        break
+                except EOFError:
+                    return
 
 
 def parse_args() -> argparse.Namespace:
@@ -538,6 +629,8 @@ def parse_args() -> argparse.Namespace:
     color_group = parser.add_mutually_exclusive_group()
     color_group.add_argument("--color", action="store_true", help="force colored terminal output")
     color_group.add_argument("--no-color", action="store_true", help="disable colored terminal output")
+    parser.add_argument("--inspect", action="store_true",
+                        help="interactively inspect full advisory lists after scanning a saved inventory")
     parser.add_argument("--version", action="version", version=f"PatchGap {VERSION}")
     return parser.parse_args()
 
@@ -551,6 +644,10 @@ def main() -> int:
             raise ValueError("--scan-inventory requires --online")
         if args.scan_inventory and args.refresh:
             raise ValueError("--refresh cannot be used with --scan-inventory")
+        if args.inspect and not args.scan_inventory:
+            raise ValueError("--inspect is available with --scan-inventory")
+        if args.inspect and not sys.stdin.isatty():
+            raise ValueError("--inspect requires an interactive terminal")
 
         if args.scan_inventory:
             if args.output and Path(args.output).expanduser().resolve() == Path(args.scan_inventory).expanduser().resolve():
@@ -591,6 +688,8 @@ def main() -> int:
             return 2
         message = f"Report saved to {destination}"
         print(f"\033[32m{message}\033[0m" if use_color else message)
+    if args.inspect:
+        inspect_findings(packages, use_color)
     return 0
 
 
