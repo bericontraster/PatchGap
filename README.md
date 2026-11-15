@@ -17,6 +17,7 @@ PatchGap helps administrators identify package updates on Linux systems and chec
 ## Table of contents
 
 - [Overview](#overview)
+- [Demo](#demo)
 - [What PatchGap checks](#what-patchgap-checks)
 - [Quick start](#quick-start)
 - [Offline inventory and online CVE scan](#offline-inventory-and-online-cve-scan)
@@ -36,6 +37,16 @@ PatchGap is designed for a common Linux administration problem: the system that 
 3. On an internet-connected machine, submit the saved package names and versions to OSV and review matching advisories.
 
 PatchGap is an inventory and reporting tool. It does not install, upgrade, or remove software.
+
+## Demo
+
+<p align="center">
+  <img src="assets/patchgap.gif" alt="PatchGap demo: scanning a saved package inventory, inspecting a package's CVE advisories, and manually researching a related public proof of concept" width="900">
+</p>
+
+<p align="center"><em>Export an offline inventory, scan it online, inspect a package's advisories, then follow up with manual CVE and public PoC research.</em></p>
+
+The CVE search and proof-of-concept research shown are manual follow-up steps. PatchGap reports package versions and matching advisories; it does not search for exploits or validate PoCs.
 
 ## What PatchGap checks
 
@@ -129,6 +140,7 @@ PatchGap reports package-manager inventory and update status. It does not inspec
 - `patchgap` — small POSIX shell launcher
 - `patchgap.py` — Python implementation
 - `assets/patchgap-logo.svg` — project logo used above
+- `assets/patchgap.gif` — animated usage demonstration
 
 ## License
 

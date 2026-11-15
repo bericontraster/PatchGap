@@ -1,10 +1,35 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
   <title id="title">PatchGap</title>
-  <desc id="description">A teal security shield with a gold patch bridging a gap.</desc>
-  <rect width="512" height="512" rx="112" fill="#0B1424"/>
-  <path d="M256 66 396 118v116c0 91-53 158-140 208-87-50-140-117-140-208V118z"
-        fill="#14243A" stroke="#56D6C8" stroke-width="16" stroke-linejoin="round"/>
-  <path d="M170 256h56m60 0h56" fill="none" stroke="#56D6C8" stroke-width="20" stroke-linecap="round"/>
-  <rect x="226" y="226" width="60" height="60" rx="14" fill="#F4B942"/>
-  <path d="m240 256 11 11 22-24" fill="none" stroke="#14243A" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <desc id="description">A custom PG monogram with a gold patch tile joining two separated strokes.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111D32"/>
+      <stop offset="1" stop-color="#090F1C"/>
+    </linearGradient>
+    <linearGradient id="pStroke" x1="135" y1="150" x2="300" y2="355" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5CE1D2"/>
+      <stop offset="1" stop-color="#27AFC5"/>
+    </linearGradient>
+    <linearGradient id="gStroke" x1="250" y1="150" x2="400" y2="355" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A99BFF"/>
+      <stop offset="1" stop-color="#6579F4"/>
+    </linearGradient>
+    <linearGradient id="patch" x1="232" y1="226" x2="280" y2="282" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFD36A"/>
+      <stop offset="1" stop-color="#F3A83A"/>
+    </linearGradient>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#background)"/>
+  <circle cx="256" cy="254" r="166" fill="#45D5D0" opacity=".08" filter="url(#softGlow)"/>
+  <rect x="1" y="1" width="510" height="510" rx="111" fill="none" stroke="#263750" stroke-width="2"/>
+
+  <path d="M150 354V158h81c58 0 58 86 0 86h-81" fill="none" stroke="url(#pStroke)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M374 204c-17-30-38-46-68-46-56 0-62 46-62 98s22 98 66 98c39 0 64-25 64-25v-50h-55" fill="none" stroke="url(#gStroke)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect x="232" y="230" width="48" height="52" rx="13" fill="url(#patch)"/>
+  <path d="M245 256h22" stroke="#513A22" stroke-width="6" stroke-linecap="round"/>
 </svg>
